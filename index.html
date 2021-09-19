@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+	var socket = io();
+</script>
+
+<script type="text/javascript">
+	var canvas, ctx, flag = false, prevX = 0, currX = 0, prevY = 0, currY = 0, dot_flag = false;
+	var x = "black", y = 2;
+
+	function init() {
+		canvas = document.getElementById('can');
+		ctx = canvas.getContext("2d");
+		w = canvas.width;
+		h = canvas.height;
+
+		canvas.addEventListener("mousemove", function(e) {
+			findxy('move', e)
+		}, false);
+		canvas.addEventListener("mousedown", function(e) {
+			findxy('down', e)
+		}, false);
+		canvas.addEventListener("mouseup", function(e) {
+			findxy('up', e)
+		}, false);
+		canvas.addEventListener("mouseout", function(e) {
+			findxy('out', e)
+		}, false);
+	}
+
+	function draw() {
+		ctx.beginPath();
+		ctx.moveTo(prevX, prevY);
+		ctx.lineTo(currX, currY);
+		ctx.strokeStyle = x;
+		ctx.lineWidth = y;
+		ctx.stroke();
+		ctx.closePath();
+	}
+
+	function save() {
+		var canvasContents = canvas.toDataURL();
+		var data = {
+			image : canvasContents
+		};
+
+		var xmlhttp = new XMLHttpRequest();
+		var theUrl = "http://localhost:3000/save";
+		xmlhttp.open("POST", theUrl);
+		xmlhttp.setRequestHeader("Content-Type", "application/json");
+		xmlhttp.send(JSON.stringify(data));
+	}
+
+	function load() {
+		var xmlhttp = new XMLHttpRequest();
+		var theUrl = "http://localhost:3000/load";
+		xmlhttp.open("GET", theUrl);
+		xmlhttp.setRequestHeader("Content-Type", "application/json");
+		xmlhttp.onreadystatechange = function () {
+			if (xmlhttp.readyState === 4 && xmlhttp.status === 200) {
+				var data = JSON.parse(xmlhttp.response);
+				if (data !== null) {
+					var image = new Image();
+					image.onload = function () {
+						ctx.clearRect(0, 0, canvas.width, canvas.height);
+						ctx.drawImage(image, 0, 0);
+					}
+					image.src = data.image;
+				}
+			}
+		};
+		xmlhttp.send();
+	}
+
+	function findxy(res, e) {
+		if (res == 'down') {
+			prevX = currX;
+			prevY = currY;
+			currX = e.clientX - canvas.offsetLeft;
+			currY = e.clientY - canvas.offsetTop;
+
+			flag = true;
+			dot_flag = true;
+			if (dot_flag) {
+				ctx.beginPath();
+				ctx.fillStyle = x;
+				ctx.fillRect(currX, currY, 2, 2);
+				ctx.closePath();
+				dot_flag = false;
+			}
+		}
+		if (res == 'up' || res == "out") {
+			flag = false;
+		}
+		if (res == 'move') {
+			if (flag) {
+				prevX = currX;
+				prevY = currY;
+				currX = e.clientX - canvas.offsetLeft;
+				currY = e.clientY - canvas.offsetTop;
+				draw();
+			}
+		}
+	}
+
+</script>
+<body onload="init()">
+	<canvas id="can" width="500" height="300" style="border: 2px solid"></canvas>
+	<button id="save" onclick="save()">Save</button>
+	<button id="load" onclick="load()">Load</button>
+</body>
+</html>
